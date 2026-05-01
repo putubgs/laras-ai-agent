@@ -354,8 +354,9 @@
 }
 
 /*
- * Hero AI scan — full-width horizontal line, sweeps bottom → top
- * (animate `top` % of hero layer so motion matches section height, not vh).
+ * Hero AI scan — `--laras-hero-scan-sweep` = time for one bottom→top pass only.
+ * `--laras-hero-scan-rest` = fade out, hidden reset, fade in, pause before the next pass.
+ * If you change either duration, update @keyframes breakpoints (see comment there).
  */
 .laras-hero-scan {
   pointer-events: none;
@@ -369,27 +370,32 @@
 
 .laras-hero-scan-beam {
   position: absolute;
-  left: 0;
-  right: 0;
+  inset: 0;
   width: 100%;
-  height: 2px;
-  top: 105%;
-  transform: none;
-  border-radius: 9999px;
+  height: 100%;
+  border: 0;
+  outline: none;
+  /* Bottom edge: only fully transparent stops + no shadow so nothing reads as a “line” there */
   background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 180, 210, 0.08) 12%,
-    rgba(210, 255, 255, 0.55) 50%,
-    rgba(0, 180, 210, 0.08) 88%,
-    transparent 100%
+    to bottom,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(240, 252, 255, 0.55) 4%,
+    rgba(0, 229, 255, 0.36) 14%,
+    rgba(0, 200, 225, 0.18) 28%,
+    rgba(0, 165, 200, 0.08) 44%,
+    rgba(0, 130, 170, 0.03) 58%,
+    rgba(0, 229, 255, 0) 72%,
+    rgba(0, 229, 255, 0) 100%
   );
-  box-shadow:
-    0 0 2px 0 rgba(220, 255, 255, 0.45),
-    0 0 8px 0 rgba(0, 245, 255, 0.32),
-    0 0 18px 0 rgba(0, 200, 255, 0.14);
-  animation: laras-hero-ai-scan 5s linear infinite;
-  will-change: top;
+  box-shadow: none;
+  opacity: 1;
+  transform: translateY(100%);
+  /* Sweep duration (seconds you tune) + separate “between scans” time */
+  --laras-hero-scan-sweep: 8s;
+  --laras-hero-scan-rest: 0s;
+  animation: laras-hero-ai-scan-cycle
+    calc(var(--laras-hero-scan-sweep) + var(--laras-hero-scan-rest)) linear infinite;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -399,17 +405,50 @@
 
   .laras-hero-scan-beam {
     animation: none;
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.5;
+    transform: none;
+    opacity: 0.45;
   }
 }
 
-@keyframes laras-hero-ai-scan {
-  0% {
-    top: 105%;
-  }
+/*
+ * Keyframes assume sweep ends at 64% (= 8s / (8s + 4.5s)). Post-sweep phases are linearly
+ * mapped from the old 36–100% band. If you change --laras-hero-scan-sweep or --laras-hero-scan-rest,
+ * set sweep_end = 100 * sweep / (sweep + rest), then each old keyframe p in [36,100] becomes:
+ * sweep_end + (p - 36) / 64 * (100 - sweep_end).
+ */
+@keyframes laras-hero-ai-scan-cycle {
+  0%,
   100% {
-    top: -8%;
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  /* sweep completes */
+  64% {
+    transform: translateY(-100%);
+    opacity: 1;
+  }
+  /* hold at top */
+  66.25% {
+    transform: translateY(-100%);
+    opacity: 1;
+  }
+  /* fade out */
+  71.875% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  /* jump to bottom while hidden */
+  73% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  76.375% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  /* fade in next pass */
+  83.125% {
+    transform: translateY(100%);
+    opacity: 1;
   }
 }
