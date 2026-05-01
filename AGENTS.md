@@ -1,5 +1,16 @@
 <!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+## Rules
+- Use App Router only
+- Use Supabase for all DB operations
+- Use server actions instead of API routes when possible
+- Follow modular AI agent architecture
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+## Tech Stack
+- Next.js (latest experimental)
+- Supabase
+- OpenAI API
+
+## Coding Style
+- TypeScript strict
+- Functional approach
 <!-- END:nextjs-agent-rules -->
