@@ -391,7 +391,7 @@
   opacity: 1;
   transform: translateY(100%);
   /* Sweep duration (seconds you tune) + separate “between scans” time */
-  --laras-hero-scan-sweep: 8s;
+  --laras-hero-scan-sweep: 20s;
   --laras-hero-scan-rest: 0s;
   animation: laras-hero-ai-scan-cycle
     calc(var(--laras-hero-scan-sweep) + var(--laras-hero-scan-rest)) linear infinite;
