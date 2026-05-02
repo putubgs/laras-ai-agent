@@ -1,7 +1,11 @@
+import Link from "next/link";
 import LightningIcon from "@/components/icons/lightning-icon";
 import ArrowRightIcon from "@/components/icons/arrow-right-icon";
 import PlayCircleIcon from "@/components/icons/play-circle-icon";
 import HeroProfileCard from "@/components/landing-page/hero-profile-card";
+
+const DEMO_VIDEO_URL =
+  "https://drive.google.com/drive/folders/14lUMlh_6tCqh9J_6cNbCS4qnuUiDanYo?usp=sharing";
 
 const AVATAR_INITIALS = ["JD", "MK", "AS"] as const;
 
@@ -35,8 +39,7 @@ export default function Hero() {
             <span className="bg-gradient-to-r from-[#A5F3FC] to-[#22D3EE] bg-clip-text text-transparent">
               Laras
             </span>
-            : <br /> Your Assistant
-            in the Modern Job Search
+            : <br /> Your Assistant in the Modern Job Search
           </h1>
 
           <p className="mt-6 max-w-[34rem] text-base leading-relaxed text-on-surface-variant md:text-lg">
@@ -46,20 +49,22 @@ export default function Hero() {
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <button
-              type="button"
+            <Link
+              href="/login"
               className="inline-flex items-center gap-2 rounded-full bg-primary-container px-7 py-3.5 text-sm font-semibold text-on-primary shadow-[0_0_28px_-4px_rgba(44,233,255,0.45)] transition hover:brightness-110 hover:shadow-[0_0_40px_-2px_rgba(44,233,255,0.55)]"
             >
               Get Started
               <ArrowRightIcon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
+            </Link>
+            <a
+              href={DEMO_VIDEO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full border border-outline-variant/55 bg-surface-container-high/45 px-6 py-3.5 text-sm font-medium text-on-surface backdrop-blur-md transition hover:border-primary/35 hover:bg-surface-container-highest/55 hover:text-primary"
             >
               <PlayCircleIcon className="h-5 w-5 text-on-surface-variant" />
               Watch Demo
-            </button>
+            </a>
           </div>
 
           <div className="mt-12 flex items-center gap-4">
