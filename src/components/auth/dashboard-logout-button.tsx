@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function DashboardLogoutButton() {
+export function DashboardLogoutButton({ className }: { className?: string } = {}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -23,7 +23,7 @@ export function DashboardLogoutButton() {
       type="button"
       disabled={pending}
       onClick={() => void logout()}
-      className="rounded-full bg-primary-container px-6 py-2.5 text-sm font-semibold text-on-primary shadow-[0_0_20px_-4px_rgba(44,233,255,0.35)] transition hover:brightness-110 disabled:opacity-60"
+      className={`inline-flex items-center justify-center rounded-full bg-primary-container px-6 py-2.5 text-sm font-semibold text-on-primary shadow-[0_0_20px_-4px_rgba(44,233,255,0.35)] transition hover:brightness-110 disabled:opacity-60 ${className ?? ""}`}
     >
       {pending ? "Signing out…" : "Sign out"}
     </button>

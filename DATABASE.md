@@ -10,6 +10,10 @@ This project uses **Supabase as a Postgres host**. Sign-in is **not** Supabase A
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Anon key (browser / SSR client if needed) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Server only** — used to run SQL over REST for `users` and future tables; bypasses RLS |
 | `SESSION_SECRET` | Signs the app session JWT (≥ 32 characters) |
+| `OPENROUTER_API_KEY` | **Server only** — [OpenRouter](https://openrouter.ai/) key for cover letters, translation, company overview, and CV keyword extraction |
+| `OPENROUTER_MODEL` | Optional; default `openai/gpt-4o-mini` (OpenAI on OpenRouter). Use e.g. `openai/gpt-4o` for a stronger model |
+| `OPENROUTER_HTTP_REFERER` | Optional site URL for OpenRouter rankings (defaults to `NEXT_PUBLIC_APP_URL` or `http://localhost:3000`) |
+| `OPENROUTER_APP_TITLE` | Optional app title header for OpenRouter (default `Laras AI Agent`) |
 
 Never expose the service role key or `SESSION_SECRET` to the client.
 
@@ -17,7 +21,7 @@ Never expose the service role key or `SESSION_SECRET` to the client.
 
 1. Open the Supabase dashboard → **SQL** → **New query**.
 2. Paste the script below and run it once on a fresh project (or adapt for migrations).
-3. Prefer **`timestamptz`** for new columns if you want timezone-safe timestamps; the script below uses `TIMESTAMP` as specified.
+3. All date/time columns in this script use **`TIMESTAMPTZ`** so Postgres stores absolute instants; the API returns ISO strings with `Z` or a numeric offset.
 
 ### UUID generation
 
@@ -47,7 +51,7 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     special_keyword VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ======================
@@ -62,8 +66,8 @@ CREATE TABLE user_cv (
     file_size INT NOT NULL,
     llm_raw_text TEXT,
     is_used BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ,
 
     CONSTRAINT fk_user_cv_user
         FOREIGN KEY (user_id)
@@ -127,9 +131,11 @@ CREATE TABLE job_application (
     is_applied BOOLEAN DEFAULT FALSE,
     is_interested BOOLEAN DEFAULT FALSE,
 
-    applied_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
+    match_percentage INT,
+
+    applied_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ,
 
     CONSTRAINT fk_job_user
         FOREIGN KEY (user_id)
@@ -180,8 +186,8 @@ CREATE TABLE phase (
     color VARCHAR(255),
     "order" INT,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ
 );
 
 -- ======================
@@ -193,12 +199,12 @@ CREATE TABLE application_phase (
     phase_id UUID NOT NULL,
 
     status VARCHAR(255),
-    scheduled_at TIMESTAMP,
-    completed_at TIMESTAMP,
+    scheduled_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
     notes TEXT,
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ,
 
     CONSTRAINT fk_app_phase_job
         FOREIGN KEY (job_application_id)
@@ -216,15 +222,26 @@ CREATE TABLE application_phase (
 -- ======================
 CREATE TABLE monthly_target (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    user_id UUID NOT NULL,
+
     year INT NOT NULL,
     month INT NOT NULL,
     target INT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
 
-    CONSTRAINT unique_year_month UNIQUE (year, month),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ,
 
-    CONSTRAINT chk_month CHECK (month BETWEEN 1 AND 12)
+    CONSTRAINT fk_monthly_target_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT unique_user_month
+        UNIQUE (user_id, year, month),
+
+    CONSTRAINT chk_month
+        CHECK (month BETWEEN 1 AND 12)
 );
 
 -- ======================
@@ -247,14 +264,14 @@ CREATE INDEX idx_app_phase_job ON application_phase(job_application_id);
 | Table | Role |
 |-------|------|
 | **users** | Accounts: profile, hashed `password`, `special_keyword` for recovery, unique `email`. Root entity for multi-tenant data. |
-| **user_cv** | One or more CV uploads per user (`file_*`, `llm_raw_text`, `is_used`). FK `user_id` → `users`, cascade delete. |
+| **user_cv** | One or more CV uploads per user (`file_*`, `llm_raw_text`, `is_used`). FK `user_id` → `users`, cascade delete. On upload, the app extracts text (`pdf-parse` for PDF; Mammoth for DOCX), runs **OpenRouter** keyword extraction on that text, then upserts **`keywords`** and **`cv_keywords`** per `DATABASE.md`. |
 | **keywords** | Normalized dictionary of keywords (`TEXT UNIQUE`). |
 | **cv_keywords** | Many-to-many: which keywords appear on which CV. Composite PK `(user_cv_id, keyword_id)`. |
-| **job_application** | Job pipeline row per user: company, role, salary range, links, notes, optional `cv_id` (SET NULL on CV delete). `chk_salary` keeps min/max sensible. |
+| **job_application** | Job pipeline row per user: company, role, salary range, links, notes, optional `cv_id` (SET NULL on CV delete), optional `match_percentage`. `chk_salary` keeps min/max sensible. |
 | **job_keywords** | Tags a job with weighted keywords (`importance_weight` default `1.0`). Composite PK `(job_application_id, keyword_id)`. |
 | **phase** | Reusable pipeline stages (`name`, `color`, `"order"`, `is_active`). Reserved column name `order` is quoted in SQL. |
 | **application_phase** | Links a job application to a phase with optional schedule/completion and notes. |
-| **monthly_target** | Global monthly application targets (`year`, `month`, `target`); `unique_year_month` + `chk_month`. |
+| **monthly_target** | Per-user monthly application goal: `user_id`, `year`, `month`, `target`. One row per user per month (`unique_user_month` on `user_id`, `year`, `month`). FK `user_id` → `users`, cascade delete. |
 
 ### Relationships (high level)
 
@@ -262,10 +279,9 @@ CREATE INDEX idx_app_phase_job ON application_phase(job_application_id);
 users
   ├──< user_cv >──< cv_keywords >── keywords
   │       └── (optional FK from job_application.cv_id)
+  ├──< monthly_target
   └──< job_application >──< job_keywords >── keywords
         └──< application_phase >── phase
-
-monthly_target  (standalone config)
 ```
 
 ### Indexes (recap)
@@ -274,6 +290,7 @@ monthly_target  (standalone config)
 - **user_cv(user_id)** — list CVs for a user.
 - **job_application(user_id, status)** — dashboard lists and filters.
 - **application_phase(job_application_id)** — timeline per application.
+- **monthly_target** — unique `(user_id, year, month)` enforces one target per user per month; list/filter by `user_id` for settings and analytics.
 
 ### Row Level Security (RLS)
 
@@ -284,4 +301,5 @@ If you enable RLS on these tables for the **anon** key, the app’s **service ro
 ## App code touchpoints today
 
 - **Register / login / forgot-password** use the **`users`** table only (`src/app/api/auth/*`, `src/lib/supabase/service-role.ts`).
-- Other tables are **forward-looking** for CV parsing, job tracking, phases, and targets; wire them in as features land.
+- **CV upload** (`src/lib/actions/cv.ts`): storage → `user_cv` row → `src/lib/cv-text-extract.ts` (PDF via `pdf-parse`; DOCX via Mammoth) → `src/lib/gemini-cv-keywords.ts` (OpenRouter) → `src/lib/cv-keywords.ts` persists **`keywords`** + **`cv_keywords`** and, only on that success path, writes a JSON snapshot to **`user_cv.llm_raw_text`**. Extraction / keyword failures are not written to `llm_raw_text`; the client may show a warning instead.
+- **Job match analysis** (`analyzeJobCvMatchAndSave` in `src/lib/actions/applications.ts`): OpenRouter job keywords → `keywords` / `job_keywords`, blended `match_percentage` on `job_application`, and **Laras coaching prose** returned in the action result only (not stored in Postgres).
