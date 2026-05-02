@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   validatePassword,
   validatePasswordMatch,
-} from "@/validation/password";
+} from "../../../utils/validation/password";
 
 describe("validatePassword", () => {
   it("accepts a strong password", () => {

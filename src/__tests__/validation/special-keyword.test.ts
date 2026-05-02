@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateSpecialKeyword } from "@/validation/special-keyword";
+import { validateSpecialKeyword } from "../../../utils/validation/special-keyword";
 
 describe("validateSpecialKeyword", () => {
   it("accepts non-empty within limit", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateFullName } from "@/validation/full-name";
+import { validateFullName } from "../../../utils/validation/full-name";
 
 describe("validateFullName", () => {
   it("accepts a normal name", () => {

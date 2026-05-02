@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AuthCard from "@/components/auth/auth-card";
+import AuthPageShell from "@/components/auth/auth-page-shell";
 import { AuthField } from "@/components/auth/auth-field";
 import {
   validateEmail,
@@ -11,7 +12,7 @@ import {
   validatePassword,
   validatePasswordMatch,
   validateSpecialKeyword,
-} from "@/validation";
+} from "@utils/validation";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,11 +22,14 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [keyword, setKeyword] = useState("");
   const [errors, setErrors] = useState<Record<string, string | null>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTouched(true);
+    setFormError(null);
     const next: Record<string, string | null> = {};
 
     const fn = validateFullName(fullName);
@@ -46,14 +50,39 @@ export default function RegisterPage() {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    router.push("/login");
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          password,
+          confirm_password: confirm,
+          special_keyword: keyword,
+        }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setFormError(data.error ?? "Registration failed.");
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setFormError("Network error. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <main className="min-h-full bg-background">
+    <AuthPageShell>
       <AuthCard
         title="Create account"
-        subtitle="Dummy registration — data is not stored."
+        subtitle="Password is hashed server-side; Supabase stores the user row only."
         footer={
           <>
             Already have an account?{" "}
@@ -66,7 +95,12 @@ export default function RegisterPage() {
           </>
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5" noValidate>
+          {formError ? (
+            <p className="rounded-lg border border-error/40 bg-error-container/15 px-3 py-2 text-sm text-on-error-container">
+              {formError}
+            </p>
+          ) : null}
           <AuthField
             id="full_name"
             label="Full name"
@@ -75,6 +109,7 @@ export default function RegisterPage() {
             onChange={(ev) => {
               setFullName(ev.target.value);
               if (touched) setErrors((o) => ({ ...o, fullName: null }));
+              setFormError(null);
             }}
             error={errors.fullName}
           />
@@ -87,6 +122,7 @@ export default function RegisterPage() {
             onChange={(ev) => {
               setEmail(ev.target.value);
               if (touched) setErrors((o) => ({ ...o, email: null }));
+              setFormError(null);
             }}
             error={errors.email}
           />
@@ -99,6 +135,7 @@ export default function RegisterPage() {
             onChange={(ev) => {
               setPassword(ev.target.value);
               if (touched) setErrors((o) => ({ ...o, password: null }));
+              setFormError(null);
             }}
             error={errors.password}
           />
@@ -111,6 +148,7 @@ export default function RegisterPage() {
             onChange={(ev) => {
               setConfirm(ev.target.value);
               if (touched) setErrors((o) => ({ ...o, confirm: null }));
+              setFormError(null);
             }}
             error={errors.confirm}
           />
@@ -123,17 +161,19 @@ export default function RegisterPage() {
             onChange={(ev) => {
               setKeyword(ev.target.value);
               if (touched) setErrors((o) => ({ ...o, specialKeyword: null }));
+              setFormError(null);
             }}
             error={errors.specialKeyword}
           />
           <button
             type="submit"
-            className="w-full rounded-full bg-primary-container py-3 text-sm font-semibold text-on-primary shadow-[0_0_20px_-4px_rgba(44,233,255,0.35)] transition hover:brightness-110"
+            disabled={submitting}
+            className="w-full rounded-full bg-primary-container py-3 text-sm font-semibold text-on-primary shadow-[0_0_20px_-4px_rgba(44,233,255,0.35)] transition hover:brightness-110 disabled:opacity-60"
           >
-            Register
+            {submitting ? "Creating account…" : "Register"}
           </button>
         </form>
       </AuthCard>
-    </main>
+    </AuthPageShell>
   );
 }

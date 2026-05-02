@@ -35,12 +35,12 @@ export default function Header() {
           <FeaturesNavLink className="rounded-lg px-3 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-high/75 hover:text-primary md:px-3.5">
             Features
           </FeaturesNavLink>
-          <button
-            type="button"
+          <Link
+            href="/login"
             className="ml-2 inline-flex items-center justify-center rounded-full bg-primary-container px-5 py-2.5 text-xs font-semibold text-on-primary shadow-[0_0_28px_-4px_rgba(44,233,255,0.45)] transition hover:brightness-110 hover:shadow-[0_0_40px_-2px_rgba(44,233,255,0.55)] md:ml-3 md:px-6 md:text-sm"
           >
             Sign in
-          </button>
+          </Link>
         </nav>
       </div>
     </header>
