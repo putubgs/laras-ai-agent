@@ -100,7 +100,7 @@ export function SourceBarChart({ data }: { data: SourceData[] }) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} fill="none" />
         <XAxis
           dataKey="name"
           tick={{ fontSize: 11, fill: TICK }}
@@ -108,7 +108,7 @@ export function SourceBarChart({ data }: { data: SourceData[] }) {
           tickLine={false}
         />
         <YAxis tick={{ fontSize: 11, fill: TICK }} axisLine={false} tickLine={false} />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip />} cursor={false} />
         <Bar dataKey="count" name="Applications" radius={[6, 6, 0, 0]}>
           {data.map((entry, index) => (
             <Cell key={index} fill={entry.color} />
@@ -123,7 +123,7 @@ export function TrendLineChart({ data, dailyTarget }: { data: TrendData[]; daily
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} fill="none" />
         <XAxis
           dataKey="date"
           tick={{ fontSize: 10, fill: TICK }}
@@ -131,7 +131,7 @@ export function TrendLineChart({ data, dailyTarget }: { data: TrendData[]; daily
           tickLine={false}
         />
         <YAxis tick={{ fontSize: 11, fill: TICK }} axisLine={false} tickLine={false} />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip />} cursor={false} />
         <Legend
           iconType="circle"
           iconSize={8}
@@ -171,7 +171,7 @@ export function MonthlyTrendChart({
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} fill="none" />
         <XAxis
           dataKey="date"
           tick={{ fontSize: 11, fill: TICK }}
@@ -180,7 +180,7 @@ export function MonthlyTrendChart({
           interval="preserveStartEnd"
         />
         <YAxis tick={{ fontSize: 11, fill: TICK }} axisLine={false} tickLine={false} />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip />} cursor={false} />
         {avgMonthly > 0 && (
           <ReferenceLine
             y={avgMonthly}
@@ -212,7 +212,7 @@ export function PhaseBarChart({ data }: { data: PhaseData[] }) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} fill="none" />
         <XAxis type="number" tick={{ fontSize: 11, fill: TICK }} axisLine={false} tickLine={false} />
         <YAxis
           type="category"
@@ -222,7 +222,7 @@ export function PhaseBarChart({ data }: { data: PhaseData[] }) {
           tickLine={false}
           width={110}
         />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip />} cursor={false} />
         <Legend
           iconType="circle"
           iconSize={8}

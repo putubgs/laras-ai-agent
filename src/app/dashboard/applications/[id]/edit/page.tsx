@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import ApplicationForm from "@/components/dashboard/ApplicationForm";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -80,15 +81,21 @@ export default async function EditApplicationPage({
         <p className="text-on-surface-variant mt-1">Edit application details and track phases</p>
       </div>
 
-      <ApplicationForm
-        phases={phases}
-        existingApps={existingApps}
-        candidateName={fullName}
-        candidateSummary={null}
-        cvContext={null}
-        cvVersions={cvVersions}
-        application={formApplication}
-      />
+      <Suspense
+        fallback={
+          <div className="laras-card p-8 text-sm text-on-surface-variant">Loading form…</div>
+        }
+      >
+        <ApplicationForm
+          phases={phases}
+          existingApps={existingApps}
+          candidateName={fullName}
+          candidateSummary={null}
+          cvContext={null}
+          cvVersions={cvVersions}
+          application={formApplication}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo, useRef } from "react";
+import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import {
   Building2,
@@ -45,6 +45,10 @@ import { generateCompanyOverview, translateToEnglish } from "@/lib/actions/gemin
 import CoverLetterSection from "@/components/dashboard/CoverLetterSection";
 import { LarasTypingAdvice } from "@/components/dashboard/LarasTypingAdvice";
 import { APP_TIME_ZONE } from "@/lib/app-timezone";
+import {
+  takeFindJobHandoffDraft,
+  useJobApplyDraftStore,
+} from "@/stores/job-apply-draft-store";
 
 type Phase = { id: string; name: string; color: string; order: number };
 type AppPhase = {
@@ -114,6 +118,8 @@ export default function ApplicationForm({
   application,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const findJobHandoffId = useSearchParams().get("fromFind");
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -145,6 +151,8 @@ export default function ApplicationForm({
     application?.coverLetter ?? "",
   );
   const [cvId, setCvId] = useState(application?.cvId ?? "");
+  const [locationField, setLocationField] = useState(application?.location ?? "");
+  const [jobUrl, setJobUrl] = useState(application?.jobUrl ?? "");
   const [salaryMin, setSalaryMin] = useState(application?.salaryMin?.toString() ?? "");
   const [salaryMax, setSalaryMax] = useState(application?.salaryMax?.toString() ?? "");
   const salaryError =
@@ -223,6 +231,37 @@ export default function ApplicationForm({
     application?.matchedJobCvKeywords,
   ]);
 
+  useEffect(() => {
+    if (!application?.id) return;
+    const loc = application.location ?? "";
+    const url = application.jobUrl ?? "";
+    queueMicrotask(() => {
+      setLocationField(loc);
+      setJobUrl(url);
+    });
+  }, [application?.id, application?.location, application?.jobUrl]);
+
+  useLayoutEffect(() => {
+    if (application) return;
+    const fromFind =
+      findJobHandoffId ??
+      (typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("fromFind")
+        : null);
+    let d = useJobApplyDraftStore.getState().consumeJobApplyDraft();
+    if (!d) d = takeFindJobHandoffDraft(fromFind);
+    if (!d) return;
+    setCompany(d.company);
+    setPosition(d.position);
+    setJobDescription(d.jobDescription);
+    setCvId(d.cvId);
+    setJobUrl(d.jobUrl);
+    setLocationField(d.location);
+    if (fromFind) {
+      router.replace(pathname);
+    }
+  }, [application, findJobHandoffId, pathname, router]);
+
   const now = new Date();
   const todayStr = formatInTimeZone(now, APP_TIME_ZONE, "yyyy-MM-dd");
 
@@ -299,9 +338,9 @@ export default function ApplicationForm({
       applicationId: isEdit ? application!.id : undefined,
       company: (formData.get("company") as string) || company,
       position: (formData.get("position") as string) || position,
-      location: formData.get("location") as string,
+      location: locationField,
       locationType: formData.get("locationType") as string,
-      jobUrl: formData.get("jobUrl") as string,
+      jobUrl,
       source: formData.get("source") as string,
       status: formData.get("status") as string,
       salaryMin: formData.get("salaryMin") as string,
@@ -363,9 +402,9 @@ export default function ApplicationForm({
     const data: ApplicationFormData = {
       company: formData.get("company") as string,
       position: formData.get("position") as string,
-      location: formData.get("location") as string,
+      location: locationField,
       locationType: formData.get("locationType") as string,
-      jobUrl: formData.get("jobUrl") as string,
+      jobUrl,
       source: formData.get("source") as string,
       status: formData.get("status") as string,
       salaryMin: formData.get("salaryMin") as string,
@@ -549,7 +588,8 @@ export default function ApplicationForm({
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
               <input
                 name="location"
-                defaultValue={application?.location ?? ""}
+                value={locationField}
+                onChange={(e) => setLocationField(e.target.value)}
                 placeholder="e.g. San Francisco, CA"
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-outline-variant text-sm focus:outline-none focus:ring-2 focus:ring-surface-tint"
               />
@@ -582,7 +622,8 @@ export default function ApplicationForm({
               <input
                 name="jobUrl"
                 type="url"
-                defaultValue={application?.jobUrl ?? ""}
+                value={jobUrl}
+                onChange={(e) => setJobUrl(e.target.value)}
                 placeholder="https://..."
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-outline-variant text-sm focus:outline-none focus:ring-2 focus:ring-surface-tint"
               />

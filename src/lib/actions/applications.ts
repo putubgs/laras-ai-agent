@@ -8,10 +8,10 @@ import {
   getApplicationForUser,
 } from "@/lib/dashboard-repo";
 import { naiveFormDateTimeToUtcIso, utcNowIso, parseDbInstant } from "@/lib/app-timezone";
-import { extractKeywordsFromJobDescription } from "@/lib/gemini-job-keywords";
-import { assessCvJobMatchWithLlm, generateLarasMatchAdvice } from "@/lib/gemini-job-cv-match";
-import { persistJobKeywords, keywordStorageForm } from "@/lib/job-keywords";
+import { generateLarasMatchAdvice } from "@/lib/gemini-job-cv-match";
+import { persistJobKeywords } from "@/lib/job-keywords";
 import { stripAdviceFormatting } from "@/lib/advice-format";
+import { computeJobCvMatchScores } from "@/lib/compute-job-cv-match";
 
 export type ApplicationFormData = {
   company: string;
@@ -135,76 +135,32 @@ export async function analyzeJobCvMatchAndSave(
     };
   }
 
+  const existingId = input.applicationId?.trim() || null;
+
   const { data: cvData, error: cvErr } = await supabase
     .from("user_cv")
-    .select("id, llm_raw_text")
+    .select("id")
     .eq("id", cvId)
     .eq("user_id", userId)
     .maybeSingle();
   if (cvErr) return { ok: false, error: cvErr.message };
   if (!cvData) return { ok: false, error: "CV not found or access denied." };
 
-  const existingId = input.applicationId?.trim() || null;
+  const scored = await computeJobCvMatchScores(supabase, userId, cvId, {
+    company: input.company.trim(),
+    position: input.position.trim(),
+    jobDescription,
+  });
+  if (!scored.ok) return { ok: false, error: scored.error };
 
-  const gem = await extractKeywordsFromJobDescription(jobDescription);
-  if (!gem.ok) return { ok: false, error: gem.error };
-
-  const displayByNorm = new Map<string, string>();
-  for (const raw of gem.keywords) {
-    const n = keywordStorageForm(raw);
-    if (!n || displayByNorm.has(n)) continue;
-    displayByNorm.set(n, raw.trim().replace(/\s+/g, " "));
-  }
-  const orderedNorm = [...displayByNorm.keys()];
-  const jobKeywordsDisplay = orderedNorm.map((n) => displayByNorm.get(n)!);
-  if (jobKeywordsDisplay.length === 0) {
-    return { ok: false, error: "No usable job keywords after normalization." };
-  }
-
-  const { data: cvJoin, error: jkErr } = await supabase
-    .from("cv_keywords")
-    .select("keywords(keyword)")
-    .eq("user_cv_id", cvId);
-  if (jkErr) return { ok: false, error: jkErr.message };
-
-  const cvNorm = new Set<string>();
-  for (const r of cvJoin ?? []) {
-    const w = (r.keywords as { keyword?: string } | null)?.keyword;
-    const n = keywordStorageForm(w ?? "");
-    if (n) cvNorm.add(n);
-  }
-
-  const matchedKeywords = orderedNorm.filter((n) => cvNorm.has(n)).map((n) => displayByNorm.get(n)!);
-  const keywordMatchScore =
-    orderedNorm.length === 0 ? 0 : Math.round((100 * matchedKeywords.length) / orderedNorm.length);
-
-  const llmRaw = ((cvData.llm_raw_text as string) ?? "").trim();
-  const cvKeywordLabels = (cvJoin ?? [])
-    .map((r) => (r.keywords as { keyword?: string } | null)?.keyword)
-    .filter((s): s is string => Boolean(s?.trim()));
-  const cvSnapshotForLlm =
-    llmRaw ||
-    (cvKeywordLabels.length > 0
-      ? JSON.stringify({
-          source: "cv_keywords_fallback",
-          cv_keywords: cvKeywordLabels,
-        })
-      : "");
-
-  let llmMatchScore = keywordMatchScore;
-  if (cvSnapshotForLlm) {
-    const llm = await assessCvJobMatchWithLlm({
-      company: input.company.trim(),
-      position: input.position.trim(),
-      jobDescription,
-      cvLlmRawText: cvSnapshotForLlm,
-    });
-    if (llm.ok) {
-      llmMatchScore = llm.score;
-    }
-  }
-
-  const matchPercentage = Math.round(0.75 * llmMatchScore + 0.25 * keywordMatchScore);
+  const {
+    matchPercentage,
+    llmMatchScore,
+    keywordMatchScore,
+    jobKeywordsDisplay,
+    matchedKeywords,
+    cvSnapshotForLlm,
+  } = scored;
 
   const matchedSet = new Set(matchedKeywords);
   const gapKeywords = jobKeywordsDisplay.filter((k) => !matchedSet.has(k));

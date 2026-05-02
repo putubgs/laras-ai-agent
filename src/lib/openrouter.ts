@@ -4,17 +4,16 @@ const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 /** Default OpenAI model on OpenRouter (`provider/model`). */
 export function openRouterModel(): string {
-  return process.env.OPENROUTER_MODEL?.trim() || "openai/gpt-4o-mini";
+  return "openai/gpt-4o-mini";
 }
 
 export function getOpenRouterClient(): OpenAI | null {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) return null;
   const referer =
-    process.env.OPENROUTER_HTTP_REFERER?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "http://localhost:3000";
-  const title = process.env.OPENROUTER_APP_TITLE?.trim() || "Laras AI Agent";
+    "https://laras-ai.vercel.app/";
+  const title = "Laras AI Agent";
   return new OpenAI({
     apiKey,
     baseURL: OPENROUTER_BASE_URL,

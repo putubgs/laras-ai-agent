@@ -9,12 +9,14 @@ import {
   BarChart3,
   Settings,
   FileText,
+  Search,
 } from "lucide-react";
 import { DashboardLogoutButton } from "@/components/auth/dashboard-logout-button";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/applications", label: "Applications", icon: Briefcase },
+  { href: "/dashboard/find-job", label: "Find a job", icon: Search },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/cv", label: "My CVs", icon: FileText },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },

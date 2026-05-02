@@ -56,6 +56,9 @@ export const PHASE_STATUSES = [
 
 export const DEFAULT_MONTHLY_TARGET = 1000;
 
+/** Saved applications (`is_applied`) required before Laras strategic insights on Analytics unlock. */
+export const ANALYTICS_LARAS_INSIGHTS_MIN_APPLICATIONS = 10;
+
 export const SKILL_CATEGORIES = [
   "Technical",
   "Framework",

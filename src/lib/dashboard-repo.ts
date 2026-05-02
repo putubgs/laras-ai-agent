@@ -431,6 +431,33 @@ export async function getMonthlyTargetForUser(
   return data.target as number;
 }
 
+/**
+ * Daily pace implied by the monthly target and applications so far this Jakarta month
+ * (same formula as analytics). Clamped for safe batch sizes (e.g. Find a job).
+ */
+export async function getDailyTargetForUser(userId: string): Promise<number> {
+  const jNow = jakartaYearMonthDayNow();
+  const year = jNow.year;
+  const month = jNow.month;
+  const applications = await listApplicationsForUser(userId, year, month, {
+    appliedOnly: true,
+  });
+  const monthlyTargetRow = await getMonthlyTargetForUser(userId, year, month);
+  const monthlyTarget = monthlyTargetRow ?? DEFAULT_MONTHLY_TARGET;
+  const viewDate = new Date(year, month - 1, 1);
+  const daysInMonth = getDaysInMonth(viewDate);
+  const daysRemaining = Math.max(1, daysInMonth - jNow.day + 1);
+  const todayRange = jakartaCalendarDayRangeUtc(new Date());
+  const todayCount = applications.filter((a) => {
+    const d = a.appliedAt;
+    return d >= todayRange.start && d <= todayRange.end;
+  }).length;
+  const monthCountBeforeToday = applications.length - todayCount;
+  const remainingBeforeToday = Math.max(monthlyTarget - monthCountBeforeToday, 0);
+  const dailyTarget = Math.ceil(remainingBeforeToday / daysRemaining);
+  return Math.max(1, Math.min(50, dailyTarget));
+}
+
 export type DashboardRecentApp = {
   id: string;
   company: string;

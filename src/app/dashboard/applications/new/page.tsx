@@ -1,6 +1,7 @@
-import ApplicationForm from "@/components/dashboard/ApplicationForm";
+import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import ApplicationForm from "@/components/dashboard/ApplicationForm";
 import { requireDashboardUser } from "@/lib/auth/dashboard-session";
 import {
   listPhases,
@@ -39,14 +40,20 @@ export default async function NewApplicationPage() {
         <p className="text-on-surface-variant mt-1">Track a new job application</p>
       </div>
 
-      <ApplicationForm
-        phases={phases}
-        existingApps={existingApps}
-        candidateName={fullName}
-        candidateSummary={null}
-        cvContext={null}
-        cvVersions={cvVersions}
-      />
+      <Suspense
+        fallback={
+          <div className="laras-card p-8 text-sm text-on-surface-variant">Loading form…</div>
+        }
+      >
+        <ApplicationForm
+          phases={phases}
+          existingApps={existingApps}
+          candidateName={fullName}
+          candidateSummary={null}
+          cvContext={null}
+          cvVersions={cvVersions}
+        />
+      </Suspense>
     </div>
   );
 }

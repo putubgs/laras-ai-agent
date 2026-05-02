@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { utcNowIso } from "@/lib/app-timezone";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   sessionCookieOptions,
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
         email,
         password: passwordHash,
         special_keyword: trimmedKeyword,
+        created_at: utcNowIso(),
       })
       .select("id, email")
       .single();

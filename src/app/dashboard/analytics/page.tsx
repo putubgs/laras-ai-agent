@@ -24,6 +24,7 @@ import CompanyAnalysis from "@/components/dashboard/CompanyAnalysis";
 import PositionSkillAnalysis from "@/components/dashboard/PositionSkillAnalysis";
 import ViewToggle from "@/components/dashboard/ViewToggle";
 import { requireDashboardUser } from "@/lib/auth/dashboard-session";
+import { listApplicationsForUser } from "@/lib/dashboard-repo";
 import {
   getMonthData,
   getAllTimeData,
@@ -33,6 +34,7 @@ import {
   getLocationData,
   getSalaryData,
 } from "@/lib/dashboard-analytics-data";
+import AnalyticsLarasInsights from "@/components/dashboard/AnalyticsLarasInsights";
 
 export default async function AnalyticsPage({
   searchParams,
@@ -46,7 +48,7 @@ export default async function AnalyticsPage({
   const year = sp.year ? parseInt(sp.year, 10) : jDefault.year;
   const month = sp.month ? parseInt(sp.month, 10) : jDefault.month;
 
-  const [monthData, allTimeData, companies, positionSkillData, cvPerformance, locationData, salaryData] =
+  const [monthData, allTimeData, companies, positionSkillData, cvPerformance, locationData, salaryData, savedApps] =
     await Promise.all([
       view === "month" ? getMonthData(userId, year, month) : null,
       view === "all" ? getAllTimeData(userId) : null,
@@ -55,7 +57,10 @@ export default async function AnalyticsPage({
       getCVPerformanceData(userId),
       getLocationData(userId),
       getSalaryData(userId),
+      listApplicationsForUser(userId, 0, 0, { appliedOnly: true }),
     ]);
+
+  const appliedSavedCount = savedApps.length;
 
   const data = (view === "month" ? monthData : allTimeData)!;
 
@@ -134,6 +139,13 @@ export default async function AnalyticsPage({
           </div>
         ))}
       </div>
+
+      <AnalyticsLarasInsights
+        appliedSavedCount={appliedSavedCount}
+        view={view}
+        year={year}
+        month={month}
+      />
 
       {/* Top source banner */}
       {data.topSource && (
@@ -216,11 +228,11 @@ export default async function AnalyticsPage({
         <div className="flex items-center gap-2 mb-4">
           <Layers className="h-5 w-5 text-primary" />
           <h2 className="text-base font-semibold text-on-surface">
-            Position & Skill Analysis{" "}
-            <span className="text-xs font-normal text-on-surface-variant/70 ml-1">(all time)</span>
+            Position analysis{" "}
+            <span className="ml-1 text-xs font-normal text-on-surface-variant/70">(all time)</span>
           </h2>
         </div>
-        <PositionSkillAnalysis positions={positionSkillData.positions} skills={positionSkillData.skills} />
+        <PositionSkillAnalysis positions={positionSkillData.positions} />
       </div>
 
       {/* Location Analysis */}
